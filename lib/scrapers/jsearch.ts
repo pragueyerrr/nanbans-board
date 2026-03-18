@@ -1,0 +1,143 @@
+import type { Job, JobSource } from '@/types'
+
+const JSEARCH_BASE = 'https://jsearch.p.rapidapi.com/search'
+
+const CREATIVE_QUERIES = [
+  // Leadership
+  'creative director Dubai',
+  'art director Dubai',
+  'design director Dubai',
+  'creative lead Dubai',
+  'head of creative Dubai',
+  // Design
+  'graphic designer Dubai',
+  'visual designer Dubai',
+  'digital designer Dubai',
+  'brand designer Dubai',
+  'UI UX designer Dubai',
+  'web designer Dubai',
+  'motion graphics designer Dubai',
+  'animator Dubai',
+  'illustrator Dubai',
+  '3D designer Dubai',
+  'product designer Dubai',
+  // Content & copy
+  'content creator Dubai',
+  'content writer Dubai',
+  'copywriter Dubai',
+  'scriptwriter Dubai',
+  'creative writer Dubai',
+  // Video & photo
+  'video editor Dubai',
+  'videographer Dubai',
+  'photographer Dubai',
+  'cinematographer Dubai',
+  'creative producer Dubai',
+  'content producer Dubai',
+  // Social & digital
+  'social media manager Dubai',
+  'social media creative Dubai',
+  'influencer marketing manager Dubai',
+  'digital marketing creative Dubai',
+  // Strategy & brand
+  'brand manager Dubai',
+  'creative strategist Dubai',
+  'content strategist Dubai',
+  // Advertising
+  'advertising creative Dubai',
+  'creative agency Dubai',
+]
+
+interface JSearchJob {
+  job_id: string
+  job_title: string
+  employer_name: string
+  job_city: string
+  job_country: string
+  job_description: string
+  job_apply_link: string
+  job_employment_type: string
+  job_salary_currency?: string
+  job_min_salary?: number
+  job_max_salary?: number
+  job_posted_at_datetime_utc?: string
+}
+
+interface JSearchResponse {
+  data: JSearchJob[]
+}
+
+async function fetchJSearchQuery(query: string, apiKey: string): Promise<JSearchJob[]> {
+  const params = new URLSearchParams({ query, page: '1', num_pages: '1', date_posted: 'month' })
+  const res = await fetch(`${JSEARCH_BASE}?${params}`, {
+    headers: {
+      'X-RapidAPI-Key': apiKey,
+      'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
+    },
+    signal: AbortSignal.timeout(10000),
+  })
+  if (!res.ok) return []
+  const data: JSearchResponse = await res.json()
+  return data.data ?? []
+}
+
+export async function scrapeJSearch(): Promise<Omit<Job, 'id' | 'scraped_at'>[]> {
+  const apiKey = process.env.JSEARCH_API_KEY
+  if (!apiKey) {
+    console.warn('JSEARCH_API_KEY missing — skipping JSearch')
+    return []
+  }
+
+  const allJobs: Omit<Job, 'id' | 'scraped_at'>[] = []
+  const seen = new Set<string>()
+
+  // Run queries in parallel batches of 5
+  for (let i = 0; i < CREATIVE_QUERIES.length; i += 5) {
+    const batch = CREATIVE_QUERIES.slice(i, i + 5)
+    const settled = await Promise.allSettled(
+      batch.map((q) =>
+        fetchJSearchQuery(q, apiKey).catch((err) => {
+          console.error(`JSearch error for "${q}":`, err)
+          return []
+        })
+      )
+    )
+
+    for (const result of settled) {
+      if (result.status !== 'fulfilled') continue
+      for (const job of result.value) {
+        if (seen.has(job.job_id)) continue
+
+        const country = (job.job_country ?? '').toLowerCase()
+        const city = (job.job_city ?? '').toLowerCase()
+        if (!country.includes('ae') && !country.includes('arab') && !city.includes('dubai')) {
+          continue
+        }
+
+        seen.add(job.job_id)
+
+        let salaryRange: string | undefined
+        if (job.job_min_salary && job.job_max_salary) {
+          salaryRange = `${job.job_salary_currency ?? 'AED'} ${Math.round(job.job_min_salary).toLocaleString()} – ${Math.round(job.job_max_salary).toLocaleString()}`
+        }
+
+        allJobs.push({
+          external_id: job.job_id,
+          source: 'manual' as JobSource,
+          title: job.job_title,
+          company: job.employer_name,
+          location: [job.job_city, job.job_country].filter(Boolean).join(', ') || 'Dubai, UAE',
+          description: job.job_description?.slice(0, 2000),
+          job_url: job.job_apply_link,
+          job_type: job.job_employment_type,
+          salary_range: salaryRange,
+          posted_at: job.job_posted_at_datetime_utc,
+          is_active: true,
+          raw_data: { jsearch: true },
+        })
+      }
+    }
+  }
+
+  return allJobs
+}
