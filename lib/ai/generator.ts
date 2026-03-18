@@ -112,7 +112,7 @@ If experience is lean: use 11pt + compact:false.`
 export async function generateCoverLetterStream(
   job: Job,
   cv: CVProfile
-): Promise<Anthropic.Stream<Anthropic.RawMessageStreamEvent>> {
+): Promise<ReturnType<typeof anthropic.messages.stream>> {
   const cvText = cv.raw_text ?? JSON.stringify(cv.parsed_data ?? {})
 
   return anthropic.messages.stream({
