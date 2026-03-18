@@ -156,7 +156,6 @@ export async function parseCVWithClaude(rawText: string): Promise<ParsedCV> {
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 3000,
-    thinking: { type: 'adaptive' },
     messages: [
       {
         role: 'user',
