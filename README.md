@@ -1,6 +1,6 @@
 # NanBan's Board
 
-A personal job tracker built for my friend Nandita (we call her NanBan), a product management professional looking for PM and adjacent roles in Dubai.
+A personal job tracker built for my friend Nandita (we call her NanBan). She's been my best friend for decades, and currently with the war situation in the Middle East (March 2026), she's in India and doesn't have a specific date to come back. I want my bestie back, and a job would give her a reason. She is a product management professional looking for PM and adjacent roles in Dubai.
 
 ---
 
@@ -29,4 +29,4 @@ Next.js 15 · Supabase · Upstash Redis · Claude API (Anthropic) · Tailwind CS
 
 ## Built with
 
-This was built with **[Claude Code](https://claude.ai/claude-code)** — Anthropic's AI coding tool. Most of the code was written through a conversation, not typed by hand.
+This was built with **[Claude Code](https://claude.ai/claude-code)** — Anthropic's AI coding tool. Most of the code was written through a conversation, not typed by hand. I have no software engineering background — just an idea and a desire to bring my bestie back home. 
